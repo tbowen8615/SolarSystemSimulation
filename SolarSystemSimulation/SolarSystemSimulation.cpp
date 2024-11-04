@@ -6,6 +6,8 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <cstdlib>    // For random number generation
+#include <ctime>      // For seeding the random generator
 
 // Constants for scaling and window size
 const int WINDOW_WIDTH = 1200;
@@ -39,6 +41,15 @@ std::vector<Planet> planets = {
     {4.0f * SCALE, 0.046f, 84.02f, 0.03f, 0.0f, 0.5f, 1.0f}, // Uranus (Light Blue)
     {4.5f * SCALE, 0.010f, 164.79f, 0.03f, 0.0f, 0.0f, 1.0f}  // Neptune (Blue)
 };
+
+// Function to initialize planets with random mean anomaly to avoid straight-line alignment
+void initializePlanets() {
+    srand(static_cast<unsigned int>(time(0))); // Seed the random generator
+
+    for (Planet& planet : planets) {
+        planet.meanAnomaly = static_cast<float>(rand()) / RAND_MAX * TWO_PI; // Randomize mean anomaly
+    }
+}
 
 // Function to draw a circle (Sun or Planet)
 void drawCircle(float x, float y, float radius, float r, float g, float b) {
@@ -122,6 +133,9 @@ int main() {
     glOrtho(-FULL_SCALE, FULL_SCALE, -FULL_SCALE * (float)mode->height / mode->width, FULL_SCALE * (float)mode->height / mode->width, -1.0, 1.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+
+    // Initialize planet positions with random anomalies
+    initializePlanets();
 
     // Set up timing for dynamic deltaTime
     float previousTime = glfwGetTime();
