@@ -12,6 +12,9 @@ const int WINDOW_WIDTH = 1200;
 const int WINDOW_HEIGHT = 800;
 const float SCALE = 1.5f; // Scaling factor for orbit radii
 const float G = 0.0001f; // Gravitational constant (scaled for simplicity)
+const float PI = 3.14159f;
+const float TWO_PI = 2 * PI;
+const float TOLERANCE = 1e-6f; // Tolerance for eccentric anomaly approximation
 
 // Structure to hold planet data
 struct Planet {
@@ -42,7 +45,7 @@ void drawCircle(float x, float y, float radius, float r, float g, float b) {
     glBegin(GL_TRIANGLE_FAN);
     glVertex2f(x, y);
     for (int i = 0; i <= 100; i++) {
-        float angle = 2.0f * 3.14159f * i / 100;
+        float angle = TWO_PI * i / 100;
         float dx = cosf(angle) * radius;
         float dy = sinf(angle) * radius;
         glVertex2f(x + dx, y + dy);
@@ -54,16 +57,18 @@ void drawCircle(float x, float y, float radius, float r, float g, float b) {
 void updatePlanets(float deltaTime) {
     for (Planet& planet : planets) {
         // Update mean anomaly based on orbital period
-        planet.meanAnomaly += (2 * 3.14159f / planet.orbitalPeriod) * deltaTime;
-        if (planet.meanAnomaly > 2 * 3.14159f) {
-            planet.meanAnomaly -= 2 * 3.14159f;
+        planet.meanAnomaly += (TWO_PI / planet.orbitalPeriod) * deltaTime;
+        if (planet.meanAnomaly > TWO_PI) {
+            planet.meanAnomaly -= TWO_PI;
         }
 
-        // Calculate eccentric anomaly using Newton's method for approximation
+        // Calculate eccentric anomaly using Newton's method with tolerance-based exit
         float eccentricAnomaly = planet.meanAnomaly;
-        for (int i = 0; i < 5; i++) { // 5 iterations for approximation
-            eccentricAnomaly -= (eccentricAnomaly - planet.eccentricity * sinf(eccentricAnomaly) - planet.meanAnomaly) /
+        for (int i = 0; i < 10; i++) { // Maximum 10 iterations for approximation
+            float delta = (eccentricAnomaly - planet.eccentricity * sinf(eccentricAnomaly) - planet.meanAnomaly) /
                 (1 - planet.eccentricity * cosf(eccentricAnomaly));
+            eccentricAnomaly -= delta;
+            if (fabs(delta) < TOLERANCE) break; // Exit loop if within tolerance
         }
 
         // Convert eccentric anomaly to true anomaly
