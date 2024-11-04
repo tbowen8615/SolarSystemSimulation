@@ -49,7 +49,8 @@ std::vector<Planet> planets = {
     Planet(2.8f * SCALE, 0.048f, 11.86f, 0.04f, 1.0f, 0.5f, 0.0f, "Jupiter"),
     Planet(3.5f * SCALE, 0.056f, 29.45f, 0.035f, 1.0f, 1.0f, 0.5f, "Saturn"),
     Planet(4.0f * SCALE, 0.046f, 84.02f, 0.03f, 0.0f, 0.5f, 1.0f, "Uranus"),
-    Planet(4.5f * SCALE, 0.010f, 164.79f, 0.03f, 0.0f, 0.0f, 1.0f, "Neptune")
+    Planet(4.5f * SCALE, 0.010f, 164.79f, 0.03f, 0.0f, 0.0f, 1.0f, "Neptune"),
+    Planet(5.9f * SCALE, 0.249f, 248.0f, 0.02f, 0.8f, 0.8f, 0.8f, "Pluto")  // Adding Pluto with its parameters
 };
 
 // Function to initialize planets with random mean anomaly to avoid straight-line alignment
