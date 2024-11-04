@@ -1,6 +1,5 @@
 ﻿// SolarSystemSimulation.cpp : Defines the entry point for the application.
 //
-
 #include "SolarSystemSimulation.h"
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -19,6 +18,11 @@ const float TWO_PI = 2 * PI;
 const float TOLERANCE = 1e-6f;  // Tolerance for eccentric anomaly approximation
 const float TIME_SCALE = 0.1f; // Scale factor to slow down orbits
 
+// Variables for camera control
+float zoomLevel = 1.0f; // Starting zoom level
+float xOffset = 0.0f;   // X-axis pan offset
+float yOffset = 0.0f;   // Y-axis pan offset
+
 // Structure to hold planet data
 struct Planet {
     float semiMajorAxis; // Semi-major axis of the orbit
@@ -28,18 +32,24 @@ struct Planet {
     float r, g, b;       // Color of the planet
     float angle;         // Current angle in orbit (true anomaly)
     float meanAnomaly;   // Mean anomaly
+    const char* name;    // Name of the planet
+
+    // Constructor to initialize all members
+    Planet(float semiMajorAxis, float eccentricity, float orbitalPeriod, float size, float r, float g, float b, const char* name)
+        : semiMajorAxis(semiMajorAxis), eccentricity(eccentricity), orbitalPeriod(orbitalPeriod), size(size),
+        r(r), g(g), b(b), angle(0.0f), meanAnomaly(0.0f), name(name) {}
 };
 
-// Create planets with semi-major axis, eccentricity, orbital period, size, color
+// Create planets with semi-major axis, eccentricity, orbital period, size, color, and name
 std::vector<Planet> planets = {
-    {0.4f * SCALE, 0.205f, 0.24f, 0.015f, 1.0f, 0.0f, 0.0f}, // Mercury (Red)
-    {0.7f * SCALE, 0.007f, 0.62f, 0.02f, 1.0f, 1.0f, 1.0f},  // Venus (White)
-    {1.0f * SCALE, 0.017f, 1.0f, 0.025f, 0.0f, 0.0f, 1.0f},  // Earth (Blue)
-    {1.5f * SCALE, 0.093f, 1.88f, 0.02f, 1.0f, 0.0f, 0.0f},  // Mars (Red)
-    {2.8f * SCALE, 0.048f, 11.86f, 0.04f, 1.0f, 0.5f, 0.0f}, // Jupiter (Orange)
-    {3.5f * SCALE, 0.056f, 29.45f, 0.035f, 1.0f, 1.0f, 0.5f}, // Saturn (Yellow)
-    {4.0f * SCALE, 0.046f, 84.02f, 0.03f, 0.0f, 0.5f, 1.0f}, // Uranus (Light Blue)
-    {4.5f * SCALE, 0.010f, 164.79f, 0.03f, 0.0f, 0.0f, 1.0f}  // Neptune (Blue)
+    Planet(0.4f * SCALE, 0.205f, 0.24f, 0.015f, 1.0f, 0.0f, 0.0f, "Mercury"),
+    Planet(0.7f * SCALE, 0.007f, 0.62f, 0.02f, 1.0f, 1.0f, 1.0f, "Venus"),
+    Planet(1.0f * SCALE, 0.017f, 1.0f, 0.025f, 0.0f, 0.0f, 1.0f, "Earth"),
+    Planet(1.5f * SCALE, 0.093f, 1.88f, 0.02f, 1.0f, 0.0f, 0.0f, "Mars"),
+    Planet(2.8f * SCALE, 0.048f, 11.86f, 0.04f, 1.0f, 0.5f, 0.0f, "Jupiter"),
+    Planet(3.5f * SCALE, 0.056f, 29.45f, 0.035f, 1.0f, 1.0f, 0.5f, "Saturn"),
+    Planet(4.0f * SCALE, 0.046f, 84.02f, 0.03f, 0.0f, 0.5f, 1.0f, "Uranus"),
+    Planet(4.5f * SCALE, 0.010f, 164.79f, 0.03f, 0.0f, 0.0f, 1.0f, "Neptune")
 };
 
 // Function to initialize planets with random mean anomaly to avoid straight-line alignment
@@ -65,9 +75,23 @@ void drawCircle(float x, float y, float radius, float r, float g, float b) {
     glEnd();
 }
 
+// Function to draw the orbit of a planet as an ellipse
+void drawOrbit(const Planet& planet) {
+    glColor3f(0.5f, 0.5f, 0.5f); // Gray color for orbits
+    glBegin(GL_LINE_LOOP);
+    for (int i = 0; i <= 100; i++) {
+        float angle = TWO_PI * i / 100;
+        float radius = planet.semiMajorAxis * (1 - planet.eccentricity * planet.eccentricity) /
+            (1 + planet.eccentricity * cosf(angle));
+        float x = radius * cosf(angle);
+        float y = radius * sinf(angle);
+        glVertex2f(x, y);
+    }
+    glEnd();
+}
+
 // Function to update planet positions based on elliptical orbits
 void updatePlanets(float deltaTime) {
-    // Apply time scaling to slow down the orbits
     deltaTime *= TIME_SCALE;
 
     for (Planet& planet : planets) {
@@ -79,18 +103,18 @@ void updatePlanets(float deltaTime) {
 
         // Calculate eccentric anomaly using Newton's method with tolerance-based exit
         float eccentricAnomaly = planet.meanAnomaly;
-        for (int i = 0; i < 10; i++) { // Maximum 10 iterations for approximation
+        for (int i = 0; i < 10; i++) {
             float delta = (eccentricAnomaly - planet.eccentricity * sinf(eccentricAnomaly) - planet.meanAnomaly) /
                 (1 - planet.eccentricity * cosf(eccentricAnomaly));
             eccentricAnomaly -= delta;
-            if (fabs(delta) < TOLERANCE) break; // Exit loop if within tolerance
+            if (fabs(delta) < TOLERANCE) break;
         }
 
         // Convert eccentric anomaly to true anomaly
         float trueAnomaly = 2 * atanf(sqrtf((1 + planet.eccentricity) / (1 - planet.eccentricity)) * tanf(eccentricAnomaly / 2));
         planet.angle = trueAnomaly;
 
-        // Calculate the radius based on the true anomaly (distance to the Sun)
+        // Calculate the radius based on the true anomaly
         float distance = planet.semiMajorAxis * (1 - planet.eccentricity * planet.eccentricity) /
             (1 + planet.eccentricity * cosf(trueAnomaly));
 
@@ -103,18 +127,32 @@ void updatePlanets(float deltaTime) {
     }
 }
 
+// Handle scroll input for zooming
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+    zoomLevel *= (1.0f + static_cast<float>(yoffset) * 0.1f); // Zoom in or out based on scroll direction
+    if (zoomLevel < 0.1f) zoomLevel = 0.1f; // Prevent excessive zoom out
+}
+
+// Handle keyboard input for panning
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    const float panSpeed = 0.1f / zoomLevel; // Adjust pan speed based on zoom level
+    if (action == GLFW_PRESS || action == GLFW_REPEAT) {
+        if (key == GLFW_KEY_LEFT) xOffset -= panSpeed;
+        if (key == GLFW_KEY_RIGHT) xOffset += panSpeed;
+        if (key == GLFW_KEY_UP) yOffset += panSpeed;
+        if (key == GLFW_KEY_DOWN) yOffset -= panSpeed;
+    }
+}
+
 int main() {
-    // Initialize GLFW
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return -1;
     }
 
-    // Get the primary monitor and its video mode for full screen
     GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
 
-    // Create a fullscreen window
     GLFWwindow* window = glfwCreateWindow(mode->width, mode->height, "Solar System Simulation", primaryMonitor, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
@@ -123,47 +161,47 @@ int main() {
     }
 
     glfwMakeContextCurrent(window);
-
-    // Update the SCALE factor to encompass outer planets
-    const float FULL_SCALE = 10.0f; // Increase the scale for larger view area
+    glfwSetScrollCallback(window, scrollCallback);
+    glfwSetKeyCallback(window, keyCallback);
 
     // Set up orthographic projection within the OpenGL context
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(-FULL_SCALE, FULL_SCALE, -FULL_SCALE * (float)mode->height / mode->width, FULL_SCALE * (float)mode->height / mode->width, -1.0, 1.0);
+    const float FULL_SCALE = 10.0f;
+    float aspectRatio = static_cast<float>(mode->width) / static_cast<float>(mode->height);
+    glOrtho(-FULL_SCALE * aspectRatio, FULL_SCALE * aspectRatio, -FULL_SCALE, FULL_SCALE, -1.0, 1.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    // Initialize planet positions with random anomalies
     initializePlanets();
 
-    // Set up timing for dynamic deltaTime
     float previousTime = glfwGetTime();
 
-    // Main loop
     while (!glfwWindowShouldClose(window)) {
-        // Calculate deltaTime based on elapsed time
         float currentTime = glfwGetTime();
         float deltaTime = currentTime - previousTime;
         previousTime = currentTime;
 
-        // Clear the screen with a black color
         glClear(GL_COLOR_BUFFER_BIT);
+        glPushMatrix();
 
-        // Draw the Sun at the center (yellow color)
+        // Apply zoom and pan transformations
+        glScalef(zoomLevel, zoomLevel, 1.0f);
+        glTranslatef(xOffset, yOffset, 0.0f);
+
+        // Draw the Sun at the center
         drawCircle(0.0f, 0.0f, 0.1f, 1.0f, 1.0f, 0.0f);
 
-        // Update planet positions with dynamic delta time for frame-rate independence
+        // Draw orbits and update planets
+        for (const Planet& planet : planets) drawOrbit(planet);
         updatePlanets(deltaTime);
 
-        // Swap buffers and poll events
+        glPopMatrix();
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    // Cleanup and exit
     glfwDestroyWindow(window);
     glfwTerminate();
-
     return 0;
 }
