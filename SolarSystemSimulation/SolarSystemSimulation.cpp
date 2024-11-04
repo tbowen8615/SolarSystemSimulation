@@ -10,11 +10,12 @@
 // Constants for scaling and window size
 const int WINDOW_WIDTH = 1200;
 const int WINDOW_HEIGHT = 800;
-const float SCALE = 1.5f; // Scaling factor for orbit radii
-const float G = 0.0001f; // Gravitational constant (scaled for simplicity)
+const float SCALE = 1.5f;  // Scaling factor for orbit radii
+const float G = 0.0001f;   // Gravitational constant (scaled for simplicity)
 const float PI = 3.14159f;
 const float TWO_PI = 2 * PI;
-const float TOLERANCE = 1e-6f; // Tolerance for eccentric anomaly approximation
+const float TOLERANCE = 1e-6f;  // Tolerance for eccentric anomaly approximation
+const float TIME_SCALE = 0.1f; // Scale factor to slow down orbits
 
 // Structure to hold planet data
 struct Planet {
@@ -55,6 +56,9 @@ void drawCircle(float x, float y, float radius, float r, float g, float b) {
 
 // Function to update planet positions based on elliptical orbits
 void updatePlanets(float deltaTime) {
+    // Apply time scaling to slow down the orbits
+    deltaTime *= TIME_SCALE;
+
     for (Planet& planet : planets) {
         // Update mean anomaly based on orbital period
         planet.meanAnomaly += (TWO_PI / planet.orbitalPeriod) * deltaTime;
@@ -112,19 +116,31 @@ int main() {
     // Update the SCALE factor to encompass outer planets
     const float FULL_SCALE = 10.0f; // Increase the scale for larger view area
 
-    // Set up orthographic projection with the new scale for full view
+    // Set up orthographic projection within the OpenGL context
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
     glOrtho(-FULL_SCALE, FULL_SCALE, -FULL_SCALE * (float)mode->height / mode->width, FULL_SCALE * (float)mode->height / mode->width, -1.0, 1.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    // Set up timing for dynamic deltaTime
+    float previousTime = glfwGetTime();
 
     // Main loop
     while (!glfwWindowShouldClose(window)) {
+        // Calculate deltaTime based on elapsed time
+        float currentTime = glfwGetTime();
+        float deltaTime = currentTime - previousTime;
+        previousTime = currentTime;
+
         // Clear the screen with a black color
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Draw the Sun at the center (yellow color)
         drawCircle(0.0f, 0.0f, 0.1f, 1.0f, 1.0f, 0.0f);
 
-        // Update planet positions with a small delta time for smooth orbits
-        updatePlanets(0.00001f);
+        // Update planet positions with dynamic delta time for frame-rate independence
+        updatePlanets(deltaTime);
 
         // Swap buffers and poll events
         glfwSwapBuffers(window);
