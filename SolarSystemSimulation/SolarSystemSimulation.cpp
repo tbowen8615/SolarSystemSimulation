@@ -90,8 +90,12 @@ int main() {
         return -1;
     }
 
-    // Create a windowed mode window with a larger size
-    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Solar System Simulation", NULL, NULL);
+    // Get the primary monitor and its video mode for full screen
+    GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
+
+    // Create a fullscreen window
+    GLFWwindow* window = glfwCreateWindow(mode->width, mode->height, "Solar System Simulation", primaryMonitor, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -100,8 +104,11 @@ int main() {
 
     glfwMakeContextCurrent(window);
 
-    // Set up orthographic projection based on window dimensions
-    glOrtho(-SCALE, SCALE, -SCALE * (float)WINDOW_HEIGHT / WINDOW_WIDTH, SCALE * (float)WINDOW_HEIGHT / WINDOW_WIDTH, -1.0, 1.0);
+    // Update the SCALE factor to encompass outer planets
+    const float FULL_SCALE = 10.0f; // Increase the scale for larger view area
+
+    // Set up orthographic projection with the new scale for full view
+    glOrtho(-FULL_SCALE, FULL_SCALE, -FULL_SCALE * (float)mode->height / mode->width, FULL_SCALE * (float)mode->height / mode->width, -1.0, 1.0);
 
     // Main loop
     while (!glfwWindowShouldClose(window)) {
