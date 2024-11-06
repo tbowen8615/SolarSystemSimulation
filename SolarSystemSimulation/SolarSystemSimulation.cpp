@@ -151,25 +151,25 @@ int main() {
         return -1;
     }
 
-    GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
-    const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
-
-    GLFWwindow* window = glfwCreateWindow(mode->width, mode->height, "Solar System Simulation", primaryMonitor, NULL);
+    // Create a 4K window instead of fullscreen, positioned at the top-left corner
+    GLFWwindow* window = glfwCreateWindow(3840, 2160, "Solar System Simulation", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return -1;
     }
 
+    glfwSetWindowPos(window, 0, 0);  // Position the window at the top-left
+
     glfwMakeContextCurrent(window);
     glfwSetScrollCallback(window, scrollCallback);
     glfwSetKeyCallback(window, keyCallback);
 
-    // Set up orthographic projection within the OpenGL context
+    // Set up orthographic projection as before, adjusting as needed for scale and zoom
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    const float FULL_SCALE = 10.0f;
-    float aspectRatio = static_cast<float>(mode->width) / static_cast<float>(mode->height);
+    const float FULL_SCALE = 10.0f;  // You may adjust this for the larger view area
+    float aspectRatio = 3840.0f / 2160.0f;
     glOrtho(-FULL_SCALE * aspectRatio, FULL_SCALE * aspectRatio, -FULL_SCALE, FULL_SCALE, -1.0, 1.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -186,14 +186,12 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
         glPushMatrix();
 
-        // Apply zoom and pan transformations
+        // Apply zoom and pan transformations as needed
         glScalef(zoomLevel, zoomLevel, 1.0f);
         glTranslatef(xOffset, yOffset, 0.0f);
 
-        // Draw the Sun at the center
+        // Draw the Sun and planetary orbits
         drawCircle(0.0f, 0.0f, 0.1f, 1.0f, 1.0f, 0.0f);
-
-        // Draw orbits and update planets
         for (const Planet& planet : planets) drawOrbit(planet);
         updatePlanets(deltaTime);
 
